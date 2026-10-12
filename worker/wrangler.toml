@@ -9,9 +9,14 @@ binding = "DB"
 database_name = "cainiao-db"
 database_id = "REPLACE_AFTER_D1_CREATE"
 
+# Worker 自定义域名：部署时 Cloudflare 自动创建 DNS 记录与证书
+routes = [
+  { pattern = "api.resbti.dpdns.org", custom_domain = true }
+]
+
 [vars]
-# 允许的前端来源，生产环境建议改成你的 Pages 域名，例如 https://cainiao.pages.dev
-CORS_ORIGIN = "*"
+# 允许的前端来源（逗号分隔）：自定义主域名 + Pages 默认域名
+CORS_ORIGIN = "https://cainiao.resbti.dpdns.org,https://cainiao-frontend.pages.dev"
 
 # AUTH_SECRET 不要写在这里：
 # 本地开发复制 .dev.vars.example 为 .dev.vars

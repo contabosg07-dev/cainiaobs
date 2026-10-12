@@ -62,12 +62,15 @@ jobs:
 
       - name: Smoke test (admin endpoint must require auth)
         run: |
-          sleep 5
-          code=$(curl -s -o /dev/null -w '%{http_code}' https://cainiao-api.${CF_SUBDOMAIN}.workers.dev/api/admin/users || true)
-          echo "unauthenticated /api/admin/users -> $code"
-          test "$code" = "401"
-        env:
-          CF_SUBDOMAIN: ${{ vars.CF_SUBDOMAIN }}
+          # 自定义域名 DNS/证书首次生效可能需要一些时间，最多重试 3 分钟
+          for i in $(seq 1 18); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://api.resbti.dpdns.org/api/admin/users || true)
+            echo "attempt $i: unauthenticated /api/admin/users -> $code"
+            [ "$code" = "401" ] && exit 0
+            sleep 10
+          done
+          echo "::error::自定义域名冒烟测试未通过"
+          exit 1
 
   deploy-pages:
     name: Build & Deploy Pages
@@ -94,10 +97,14 @@ jobs:
       - name: Ensure Pages project exists
         run: npx wrangler pages project create cainiao-frontend --production-branch=main || true
 
+      - name: Bind custom domain to Pages
+        # 已绑定会报错，|| true 忽略；Cloudflare 自动创建 DNS 与证书
+        run: npx wrangler pages domain add cainiao.resbti.dpdns.org --project-name=cainiao-frontend || true
+
       - name: Build
         run: npm run build
         env:
-          # 构建期注入 Worker 地址，例如 https://cainiao-api.xxx.workers.dev
+          # 构建期注入 Worker 自定义域名地址
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
 
       - name: Deploy to Pages

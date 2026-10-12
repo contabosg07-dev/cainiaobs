@@ -1,3 +1,5 @@
 # 复制本文件为 .dev.vars 后修改；.dev.vars 不会提交到仓库
 # 生产环境请用更强的随机串：wrangler secret put AUTH_SECRET
 AUTH_SECRET=dev-only-change-me-please-32chars-minimum
+# 本地开发放行所有来源（覆盖 wrangler.toml 中的生产域名限制）
+CORS_ORIGIN=*

@@ -5,8 +5,18 @@ const app = new Hono()
 
 // ---------- 全局：CORS ----------
 app.use('*', async (c, next) => {
-  const origin = c.env.CORS_ORIGIN || '*'
-  c.header('Access-Control-Allow-Origin', origin)
+  // CORS_ORIGIN 支持逗号分隔多个来源；* 表示全部放行（本地开发）
+  const allowed = (c.env.CORS_ORIGIN || '*')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const requestOrigin = c.req.header('Origin') || ''
+  const allowOrigin = allowed.includes('*')
+    ? '*'
+    : allowed.includes(requestOrigin)
+      ? requestOrigin
+      : allowed[0]
+  c.header('Access-Control-Allow-Origin', allowOrigin)
   c.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
   c.header('Access-Control-Allow-Headers', 'Authorization,Content-Type')
   c.header('Access-Control-Max-Age', '86400')
