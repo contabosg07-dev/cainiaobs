@@ -136,33 +136,8 @@ const fetchPackages = async () => {
   }
 };
 
-// WebSocket 实时刷新：后端数据变化时自动重新拉取包裹
-let ws = null
-let wsRetry = null
-
-function connectWs() {
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-    return
-  }
-  ws = new WebSocket('ws://127.0.0.1:8080/ws')
-  ws.onopen = () => {
-    console.log('[WS] connected')
-  }
-  ws.onmessage = () => {
-    if (token.value) {
-      fetchPackages()
-    }
-  }
-  ws.onclose = () => {
-    ws = null
-    clearTimeout(wsRetry)
-    wsRetry = setTimeout(connectWs, 3000)
-  }
-  ws.onerror = () => {
-    try { ws.close() } catch (e) { /* ignore */ }
-  }
-}
-
+// 定时轮询刷新包裹（迁移 Cloudflare Workers 后替代原 WebSocket 广播）
+let pollTimer = null
 
 onMounted(() => {
 
@@ -174,15 +149,16 @@ if (!token.value) {
 
 fetchPackages();
 
-connectWs()
+pollTimer = setInterval(() => {
+  if (token.value) {
+    fetchPackages();
+  }
+}, 5000);
 
 });
 
 onBeforeUnmount(() => {
-  if (ws) {
-    ws.close()
-  }
-  clearTimeout(wsRetry)
+  clearInterval(pollTimer);
 });
 
 

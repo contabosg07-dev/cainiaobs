@@ -1,65 +1,33 @@
 import { onBeforeUnmount } from 'vue'
 
-// 后台数据实时刷新：连接后端 ws，收到任意广播即触发回调重新拉取数据
-// 用法：useWebSocket(() => fetchXxx())
-export function useWebSocket(onMessage, { url = 'ws://127.0.0.1:8080/ws', retry = 3000 } = {}) {
-  let ws = null
-  let retryTimer = null
+// 后台数据自动刷新：迁移到 Cloudflare Workers 后，原 WebSocket 广播改为定时轮询。
+// 为兼容所有调用方，函数签名保持不变：useWebSocket(() => fetchXxx())
+// 第二个参数仅为兼容旧调用，url/retry 不再生效，可用 { interval } 自定义轮询间隔。
+export function useWebSocket(onMessage, { interval = 5000 } = {}) {
+  let timer = null
   let stopped = false
 
-  const connect = () => {
-    if (stopped) return
-    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-      return
-    }
+  const tick = async () => {
     try {
-      ws = new WebSocket(url)
+      await onMessage()
     } catch (e) {
-      scheduleReconnect()
-      return
-    }
-    ws.onmessage = (event) => {
-      try {
-        onMessage(event)
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    ws.onclose = () => {
-      ws = null
-      scheduleReconnect()
-    }
-    ws.onerror = () => {
-      try {
-        ws && ws.close()
-      } catch (e) {
-        /* ignore */
-      }
+      /* 忽略单次轮询失败，等待下一轮 */
     }
   }
 
-  const scheduleReconnect = () => {
+  const start = () => {
     if (stopped) return
-    clearTimeout(retryTimer)
-    retryTimer = setTimeout(connect, retry)
+    tick()
+    timer = setInterval(tick, interval)
   }
 
   const stop = () => {
     stopped = true
-    clearTimeout(retryTimer)
-    if (ws) {
-      ws.onclose = null
-      ws.onerror = null
-      try {
-        ws.close()
-      } catch (e) {
-        /* ignore */
-      }
-      ws = null
-    }
+    clearInterval(timer)
+    timer = null
   }
 
-  connect()
+  start()
   onBeforeUnmount(stop)
 
   return { stop }

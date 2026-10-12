@@ -17,9 +17,8 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8080/api/', // 后端服务地址
+        target: 'http://localhost:8787', // 本地 Cloudflare Worker（wrangler dev）
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''), // 去掉 /api 前缀
       },
     },
   },

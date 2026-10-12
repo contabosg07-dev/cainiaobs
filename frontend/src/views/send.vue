@@ -85,6 +85,7 @@ const goBack = () => {
 }
 
 const token = localStorage.getItem('token')
+const apiBase = import.meta.env.VITE_API_BASE || ''
 
 const sendPackage = async () => {
   if (!token) {
@@ -97,7 +98,7 @@ const sendPackage = async () => {
   try {
     await formRef.value.validate() // 校验表单
 
-    const response = await fetch('/api/send', {
+    const response = await fetch(`${apiBase}/api/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -6,6 +6,10 @@ import { createPinia } from 'pinia';
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 import 'element-plus/dist/index.css';
 import { setupAuthExpiredHandler } from './utils/authExpired';
+import axios from 'axios';
+
+// 生产环境由 Pages 的环境变量 VITE_API_BASE 指定 Worker 地址；本地留空走 vite 代理
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE || '';
 
 const app = createApp(App);
 const pinia = createPinia();
