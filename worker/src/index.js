@@ -26,11 +26,7 @@ app.use('*', async (c, next) => {
 
 app.onError((err, c) => {
   console.error('[worker error]', err)
-  // 临时诊断：把真实错误带回响应，定位后立即移除
-  return c.json(
-    { type: 'fail', message: '服务器内部错误', debug: String(err && (err.stack || err.message || err)), hasSecret: !!c.env.AUTH_SECRET, secretLen: (c.env.AUTH_SECRET || '').length },
-    500
-  )
+  return c.json({ type: 'fail', message: '服务器内部错误' }, 500)
 })
 
 // ---------- 工具 ----------
@@ -115,8 +111,10 @@ function validatePackageBody(body) {
 // ---------- 认证 ----------
 app.post('/api/login', async (c) => {
   const body = await readJson(c)
+  const username = String(body.username ?? '').trim()
+  if (!username) return c.json(fail('用户名或密码错误'))
   const row = await c.env.DB.prepare('SELECT * FROM users WHERE username = ?')
-    .bind(body.username)
+    .bind(username)
     .first()
   if (row && (await verifyPassword(String(body.password ?? ''), row.password))) {
     const token = await signToken(row.username, c.env.AUTH_SECRET)

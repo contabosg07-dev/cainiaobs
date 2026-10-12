@@ -54,9 +54,14 @@ jobs:
         run: npx wrangler d1 execute cainiao-db --remote --file schema.sql
 
       - name: Upload AUTH_SECRET
-        run: echo "${AUTH_SECRET}" | npx wrangler secret put AUTH_SECRET
         env:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+        run: |
+          if [ -z "${AUTH_SECRET}" ]; then
+            echo "::error::没有读到 Secret AUTH_SECRET。请在 Settings → Environments → CLOUDFLARE_API_TOKEN → Environment secrets 中新建它"
+            exit 1
+          fi
+          echo "${AUTH_SECRET}" | npx wrangler secret put AUTH_SECRET
 
       - name: Deploy Worker
         run: npx wrangler deploy
