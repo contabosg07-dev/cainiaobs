@@ -26,7 +26,11 @@ app.use('*', async (c, next) => {
 
 app.onError((err, c) => {
   console.error('[worker error]', err)
-  return c.json({ type: 'fail', message: '服务器内部错误' }, 500)
+  // 临时诊断：把真实错误带回响应，定位后立即移除
+  return c.json(
+    { type: 'fail', message: '服务器内部错误', debug: String(err && (err.stack || err.message || err)), hasSecret: !!c.env.AUTH_SECRET, secretLen: (c.env.AUTH_SECRET || '').length },
+    500
+  )
 })
 
 // ---------- 工具 ----------
