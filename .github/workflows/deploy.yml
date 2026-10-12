@@ -19,6 +19,7 @@ jobs:
   deploy-worker:
     name: Deploy Worker & D1
     runs-on: ubuntu-latest
+    environment: CLOUDFLARE_API_TOKEN
     defaults:
       run:
         working-directory: worker
@@ -76,6 +77,7 @@ jobs:
     name: Build & Deploy Pages
     needs: deploy-worker
     runs-on: ubuntu-latest
+    environment: CLOUDFLARE_API_TOKEN
     defaults:
       run:
         working-directory: frontend
