@@ -2,17 +2,18 @@ name = "cainiao-api"
 main = "src/index.js"
 compatibility_date = "2026-10-12"
 
+# Worker 自定义域名：顶层配置（必须放在所有 [table] 块之前）
+# 部署时 Cloudflare 自动创建 DNS 记录与证书
+routes = [
+  { pattern = "api.resbti.dpdns.org", custom_domain = true }
+]
+
 # D1 数据库绑定
 # 首次执行 npm run db:create 后，把输出里的 database_id 替换到下面
 [[d1_databases]]
 binding = "DB"
 database_name = "cainiao-db"
 database_id = "REPLACE_AFTER_D1_CREATE"
-
-# Worker 自定义域名：部署时 Cloudflare 自动创建 DNS 记录与证书
-routes = [
-  { pattern = "api.resbti.dpdns.org", custom_domain = true }
-]
 
 [vars]
 # 允许的前端来源（逗号分隔）：自定义主域名 + Pages 默认域名

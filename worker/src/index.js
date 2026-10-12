@@ -8,7 +8,7 @@ app.use('*', async (c, next) => {
   // CORS_ORIGIN 支持逗号分隔多个来源；* 表示全部放行（本地开发）
   const allowed = (c.env.CORS_ORIGIN || '*')
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim().replace(/^[`'"]+|[`'"]+$/g, ''))
     .filter(Boolean)
   const requestOrigin = c.req.header('Origin') || ''
   const allowOrigin = allowed.includes('*')

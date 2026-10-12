@@ -85,7 +85,7 @@ const goBack = () => {
 }
 
 const token = localStorage.getItem('token')
-const apiBase = import.meta.env.VITE_API_BASE || ''
+const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/^[`'"]+|[`'"]+$/g, '')
 
 const sendPackage = async () => {
   if (!token) {

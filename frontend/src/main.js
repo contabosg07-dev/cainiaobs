@@ -9,7 +9,8 @@ import { setupAuthExpiredHandler } from './utils/authExpired';
 import axios from 'axios';
 
 // 生产环境由 Pages 的环境变量 VITE_API_BASE 指定 Worker 地址；本地留空走 vite 代理
-axios.defaults.baseURL = import.meta.env.VITE_API_BASE || '';
+// 清洗误粘贴的引号/反引号/空白
+axios.defaults.baseURL = (import.meta.env.VITE_API_BASE || '').trim().replace(/^[`'"]+|[`'"]+$/g, '');
 
 const app = createApp(App);
 const pinia = createPinia();
