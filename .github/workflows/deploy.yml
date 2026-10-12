@@ -105,8 +105,22 @@ jobs:
         run: npx wrangler pages project create cainiao-frontend --production-branch=main || true
 
       - name: Bind custom domain to Pages
-        # 已绑定会报错，|| true 忽略；Cloudflare 自动创建 DNS 与证书
-        run: npx wrangler pages domain add cainiao.resbti.dpdns.org --project-name=cainiao-frontend || true
+        # wrangler 4 已移除 pages domain 命令，改用 Cloudflare REST API
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          resp=$(curl -sS -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/cainiao-frontend/domains" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"cainiao.resbti.dpdns.org"}')
+          echo "$resp"
+          echo "$resp" | grep -q '"success":true' && exit 0
+          # 域名已绑定过：幂等视为成功
+          echo "$resp" | grep -qi 'already' && exit 0
+          echo "::error::Pages 自定义域名绑定失败"
+          exit 1
 
       - name: Build
         run: npm run build
