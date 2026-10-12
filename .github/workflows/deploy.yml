@@ -35,16 +35,16 @@ jobs:
           cache-dependency-path: worker/package-lock.json
 
       - name: Inject D1 database id
-        run: |
-          if [ -n "${D1_DATABASE_ID:-}" ]; then
-            sed -i "s/REPLACE_AFTER_D1_CREATE/${D1_DATABASE_ID}/g" wrangler.toml
-          fi
-          if grep -q "REPLACE_AFTER_D1_CREATE" wrangler.toml; then
-            echo "::error::wrangler.toml 中仍是占位 database_id。请先 wrangler d1 create cainiao-db，并把真实 id 回填 wrangler.toml 或配置 GitHub Variable D1_DATABASE_ID"
-            exit 1
-          fi
         env:
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          if [ -z "${D1_DATABASE_ID}" ]; then
+            echo "::error::未读到 Variable D1_DATABASE_ID。请确认它建在 Variables 标签（不是 Secrets），且建完后重新 Re-run"
+            exit 1
+          fi
+          sed -i "s/REPLACE_AFTER_D1_CREATE/${D1_DATABASE_ID}/g" wrangler.toml
+          grep -q "REPLACE_AFTER_D1_CREATE" wrangler.toml && { echo "::error::database_id 替换失败"; exit 1; } || true
+          echo "D1 id injected: ${D1_DATABASE_ID}"
 
       - name: Install dependencies
         run: npm ci
