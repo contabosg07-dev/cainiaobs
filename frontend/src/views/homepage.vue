@@ -23,10 +23,10 @@
           <img :src="sendIcon" class="func-icon" />
           <div class="func-text">寄包裹</div>
         </div></router-link>
-        <div class="func-item">
+       <router-link to="/demo/plaza" class="no-underline"> <div class="func-item">
           <img :src="swapIcon" class="func-icon" />
           <div class="func-text">物换物</div>
-        </div>
+        </div></router-link>
         <div class="func-item" @click="sfm">
           <img :src="outcodeIcon" class="func-icon" />
           <div class="func-text">出库码</div>
@@ -79,9 +79,11 @@
               <div class="package-courier"> {{ pkg.courier }}</div>
               <div class="package-id"> 单号 {{ pkg.id }}</div>
               <div class="package-status">
-                状态: <span :class="pkg.pickedUp ? 'picked-up' : 'not-picked-up'">{{ pkg.pickedUp ? '已取件' : '未取件' }}</span>
-                <el-button @click="sfm"class="pikupbtn" type="primary" round >出库码出库</el-button>
-                <el-button @click="pikup(pkg)"class="pikupbtn" type="primary" round >找人代取</el-button>
+                <span class="status-label">状态: <span :class="pkg.pickedUp ? 'picked-up' : 'not-picked-up'">{{ pkg.pickedUp ? '已取件' : '未取件' }}</span></span>
+                <span class="status-actions">
+                  <el-button @click="sfm" class="pikupbtn" type="primary" round>出库码出库</el-button>
+                  <el-button @click="pikup(pkg)" class="pikupbtn" type="primary" round>找人代取</el-button>
+                </span>
               </div>
              
             </div>
@@ -323,6 +325,16 @@ margin-right: 15px;
 .package-status {
   margin-top: 8px;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.status-actions {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
 }
 
 .picked-up {
@@ -346,8 +358,7 @@ margin-right: 15px;
 text-decoration: none; 
 }
 .pikupbtn{
-float: right;
-margin-left: 10px;
+  margin-left: 0;
 }
 </style>
 

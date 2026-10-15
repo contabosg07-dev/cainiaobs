@@ -8,6 +8,7 @@ import pac from '../views/packa1ge.vue';
 import global from '../views/global.vue';
 import sfm from '../views/sfm.vue';
 import scan from '../views/scan.vue';
+import ExchangePlaza from '../views/cainiao/ExchangePlaza.vue';
 import adminlogin from '../views/adminlogin.vue';
 import AdminLayout from '../layout/AdminLayout.vue';
 import Dashboard from '../views/admin/Dashboard.vue';
@@ -16,7 +17,7 @@ import Packages from '../views/admin/Packages.vue';
 import Stations from '../views/admin/Stations.vue';
 import { validateToken } from '../utils/authExpired';
 
-const publicPaths = ['/', '/register', '/adminlogin'];
+const publicPaths = ['/', '/register', '/adminlogin', '/demo/plaza'];
 
 const routes = [
   { path: '/', meta: { title: '菜鸟驿站' }, name: 'Login', component: Login },
@@ -28,6 +29,7 @@ const routes = [
   { path: '/global', name: 'global', component: global },
   { path: '/scan', name: 'scan', component: scan },
   { path: '/sfm', name: 'sfm', component: sfm },
+  { path: '/demo/plaza', name: 'demo-plaza', meta: { title: '闲置交换广场' }, component: ExchangePlaza },
   { path: '/adminlogin', name: 'adminlogin', meta: { title: '管理员登录' }, component: adminlogin },
   // 后台管理
   {
