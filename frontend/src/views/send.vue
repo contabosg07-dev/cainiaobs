@@ -32,6 +32,11 @@
           <el-select v-model="form.courier" placeholder="请选择快递公司">
             <el-option label="顺丰" value="顺丰快递"></el-option>
             <el-option label="京东" value="京东快递"></el-option>
+            <el-option label="中通" value="中通快递"></el-option>
+            <el-option label="圆通" value="圆通快递"></el-option>
+            <el-option label="申通" value="申通快递"></el-option>
+            <el-option label="韵达" value="韵达快递"></el-option>
+            <el-option label="邮政" value="邮政快递"></el-option>
           </el-select>
         </el-form-item>
 
