@@ -2,6 +2,7 @@
 // 用法：node seed.mjs local | node seed.mjs remote
 // 远程（生产）D1 必须显式传入 ADMIN_PASSWORD，避免弱默认密码上线
 import { spawnSync } from 'node:child_process'
+import { writeFileSync, unlinkSync } from 'node:fs'
 import { webcrypto } from 'node:crypto'
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto
@@ -24,9 +25,18 @@ const sql =
   `ON CONFLICT(username) DO UPDATE SET password = excluded.password, role = 'admin', identity_code = 'ADMIN000000';`
 
 console.log(`[seed] 写入 admin 账号（${isRemote ? '远程' : '本地'} D1）${isRemote ? '' : `，默认密码：${adminPassword}`}`)
-// shell 模式下 SQL 含空格，必须整体用双引号包住（SQL 内不含双引号，安全）
-const result = spawnSync(
-  `npx wrangler d1 execute cainiao-db ${mode} --command "${sql}"`,
-  { stdio: 'inherit', shell: true }
-)
-process.exit(result.status ?? 1)
+// 注意：不能用 --command "SQL"，哈希中的 $ 会被 shell 变量展开破坏
+// 改为写临时 .sql 文件 + --file 执行，彻底避开 shell 转义问题
+const tmpFile = `.seed-admin-${process.pid}.sql`
+writeFileSync(tmpFile, sql, 'utf8')
+let status = 1
+try {
+  const result = spawnSync(
+    `npx wrangler d1 execute cainiao-db ${mode} --file ${tmpFile}`,
+    { stdio: 'inherit', shell: true }
+  )
+  status = result.status ?? 1
+} finally {
+  try { unlinkSync(tmpFile) } catch {}
+}
+process.exit(status)
