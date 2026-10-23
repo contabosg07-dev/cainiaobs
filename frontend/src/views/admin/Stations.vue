@@ -7,7 +7,7 @@
           <el-button type="primary" size="small" :icon="Plus" @click="openAdd">新增驿站</el-button>
         </div>
       </template>
-      <el-table :data="stations" v-loading="loading" border stripe style="width: 100%">
+      <el-table :data="stations" border stripe style="width: 100%">
         <el-table-column type="index" label="#" width="60" align="center" />
         <el-table-column prop="name" label="驿站名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="packageCount" label="包裹数" width="140" align="center">
@@ -55,7 +55,6 @@ import axios from 'axios'
 import { useWebSocket } from '@/composables/useWebSocket'
 
 const stations = ref([])
-const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const submitting = ref(false)
@@ -63,15 +62,18 @@ const mode = ref('add')
 const editingName = ref('')
 const form = reactive({ name: '' })
 
-const fetchStations = async () => {
-  loading.value = true
+// 轮询刷新时静默执行：不闪 loading、数据没变不重绘表格
+let lastJson = ''
+const fetchStations = async (silent = false) => {
   try {
     const { data } = await axios.get('/api/admin/stations')
-    stations.value = data
+    const json = JSON.stringify(data)
+    if (json !== lastJson) {
+      lastJson = json
+      stations.value = data
+    }
   } catch (e) {
-    ElMessage.error('获取驿站失败')
-  } finally {
-    loading.value = false
+    if (!silent) ElMessage.error('获取驿站失败')
   }
 }
 
@@ -137,7 +139,7 @@ const removeStation = async (row) => {
   }
 }
 
-useWebSocket(() => fetchStations())
+useWebSocket(() => fetchStations(true))
 
 onMounted(fetchStations)
 </script>

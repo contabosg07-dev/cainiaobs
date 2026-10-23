@@ -97,7 +97,7 @@
               <el-card class="package-card" shadow="hover">
                 <div class="package-card-content">
                   <div class="pickup-info">
-                    <img :src="pkg.courier === '顺丰快递' ? sf : jdl" class="feature-icon" />
+                    <img :src="courierIcon(pkg.courier)" class="feature-icon" />
                     <div class="pickup-code"> {{ pkg.pickupCode }}</div>
                   </div>
                   <div class="package-courier"> {{ pkg.courier }}</div>
@@ -122,7 +122,7 @@
               <el-card class="package-card" shadow="hover">
                 <div class="package-card-content">
                   <div class="pickup-info">
-                    <img :src="pkg.courier === '顺丰快递' ? sf : jdl" class="feature-icon" />
+                    <img :src="courierIcon(pkg.courier)" class="feature-icon" />
                     <div class="package-courier sent-courier">{{ pkg.courier }}</div>
                   </div>
                   <div class="package-id"> 单号 {{ pkg.id }}</div>
@@ -184,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useUserStore } from '@/stores/user';
 import { Search, User, Bell, ArrowDown } from '@element-plus/icons-vue';
 import receiveIcon from '../assets/icons/receive.png';
@@ -198,12 +198,30 @@ import recycle from '../assets/icons/recycle.png';
 import save from '../assets/icons/save.png';
 import jdl from '../assets/icons/jdl.png';
 import sf from '../assets/icons/sf.png';
+import ztoIcon from '../assets/icons/zto.png';
+import ytoIcon from '../assets/icons/yto.png';
+import stoIcon from '../assets/icons/sto.png';
+import ydIcon from '../assets/icons/yd.png';
+import emsIcon from '../assets/icons/ems.png';
 import { ElMessage } from 'element-plus';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 
 const userStore = useUserStore();
 const router = useRouter();
+
+// 按快递公司匹配图标，未知公司用中性包裹图标兜底
+const courierIcon = (courier) => {
+  const c = String(courier || '');
+  if (c.includes('顺丰')) return sf;
+  if (c.includes('京东')) return jdl;
+  if (c.includes('中通')) return ztoIcon;
+  if (c.includes('圆通')) return ytoIcon;
+  if (c.includes('申通')) return stoIcon;
+  if (c.includes('韵达')) return ydIcon;
+  if (c.includes('邮政') || c.includes('EMS')) return emsIcon;
+  return receiveIcon;
+};
 const token = ref(null);
 const packages = ref([]);
 const sentPackages = ref([]);
@@ -342,9 +360,7 @@ const formatTime = (t) => {
   return String(t).replace('T', ' ').slice(0, 16);
 };
 
-// 定时轮询刷新包裹与未读数（迁移 Cloudflare Workers 后替代原 WebSocket 广播）
-let pollTimer = null;
-
+// 进入页面时加载一次包裹与未读数
 onMounted(() => {
   token.value = userStore.token;
   if (!token.value) {
@@ -353,19 +369,9 @@ onMounted(() => {
     return;
   }
 
+  // 只在进入页面时加载一次，不做定时轮询，避免列表反复重渲染闪烁
   fetchPackages();
   fetchNotifications();
-
-  pollTimer = setInterval(() => {
-    if (token.value && !notifyDrawer.value) {
-      fetchPackages();
-      fetchNotifications();
-    }
-  }, 5000);
-});
-
-onBeforeUnmount(() => {
-  clearInterval(pollTimer);
 });
 
 async function pikup(pkg) {

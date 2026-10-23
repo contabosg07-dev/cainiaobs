@@ -65,9 +65,14 @@ const barRef = ref(null)
 const lineRef = ref(null)
 let pieChart, barChart, lineChart
 
-const fetchStats = async () => {
+// 轮询刷新时静默执行：数据没变不重绘图表，避免闪烁
+let lastStatsJson = ''
+const fetchStats = async (silent = false) => {
   try {
     const { data } = await axios.get('/api/admin/stats')
+    const json = JSON.stringify(data)
+    if (json === lastStatsJson) return
+    lastStatsJson = json
     Object.assign(stats, data)
     cards.value = [
       { label: '总用户数', value: stats.totalUsers, color: '#409eff', icon: User },
@@ -79,7 +84,7 @@ const fetchStats = async () => {
     await nextTick()
     renderCharts()
   } catch (e) {
-    ElMessage.error('获取统计数据失败')
+    if (!silent) ElMessage.error('获取统计数据失败')
   }
 }
 
@@ -149,7 +154,7 @@ const onResize = () => {
   lineChart?.resize()
 }
 
-useWebSocket(() => fetchStats())
+useWebSocket(() => fetchStats(true))
 
 onMounted(() => {
   fetchStats()

@@ -11,7 +11,7 @@
           </div>
         </div>
       </template>
-      <el-table :data="packages" v-loading="loading" border stripe style="width: 100%">
+      <el-table :data="packages" border stripe style="width: 100%">
         <el-table-column prop="id" label="快递ID" width="190" show-overflow-tooltip />
         <el-table-column prop="courier" label="快递公司" width="110" />
         <el-table-column prop="pickupCode" label="取件码" width="110" />
@@ -77,7 +77,6 @@ import axios from 'axios'
 import { useWebSocket } from '@/composables/useWebSocket'
 
 const packages = ref([])
-const loading = ref(false)
 
 const addDialog = ref(false)
 const submitting = ref(false)
@@ -85,15 +84,18 @@ const stations = ref([])
 const couriers = ['顺丰快递', '京东物流', '中通快递', '圆通快递', '申通快递', '韵达快递', '邮政快递']
 const addForm = reactive({ id: '', pickupCode: '', courier: '', receiver: '', station: '' })
 
-const fetchPackages = async () => {
-  loading.value = true
+// 轮询刷新时静默执行：不闪 loading、数据没变不重绘表格
+let lastJson = ''
+const fetchPackages = async (silent = false) => {
   try {
     const { data } = await axios.get('/api/admin/packages')
-    packages.value = data
+    const json = JSON.stringify(data)
+    if (json !== lastJson) {
+      lastJson = json
+      packages.value = data
+    }
   } catch (e) {
-    ElMessage.error('获取快递失败')
-  } finally {
-    loading.value = false
+    if (!silent) ElMessage.error('获取快递失败')
   }
 }
 
@@ -203,7 +205,7 @@ const formatTime = (t) => {
 }
 const pad = (n) => String(n).padStart(2, '0')
 
-useWebSocket(() => fetchPackages())
+useWebSocket(() => fetchPackages(true))
 
 onMounted(() => {
   fetchPackages()

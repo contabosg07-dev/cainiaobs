@@ -7,7 +7,7 @@
           <el-button :icon="Refresh" size="small" @click="fetchUsers">刷新</el-button>
         </div>
       </template>
-      <el-table :data="users" v-loading="loading" border stripe style="width: 100%">
+      <el-table :data="users" border stripe style="width: 100%">
         <el-table-column type="index" label="#" width="60" align="center" />
         <el-table-column prop="username" label="用户名" min-width="140" show-overflow-tooltip />
         <el-table-column prop="role" label="角色" width="120" align="center">
@@ -41,17 +41,19 @@ import axios from 'axios'
 import { useWebSocket } from '@/composables/useWebSocket'
 
 const users = ref([])
-const loading = ref(false)
 
-const fetchUsers = async () => {
-  loading.value = true
+// 轮询刷新时静默执行：不闪 loading、数据没变不重绘表格
+let lastJson = ''
+const fetchUsers = async (silent = false) => {
   try {
     const { data } = await axios.get('/api/admin/users')
-    users.value = data
+    const json = JSON.stringify(data)
+    if (json !== lastJson) {
+      lastJson = json
+      users.value = data
+    }
   } catch (e) {
-    ElMessage.error('获取用户失败')
-  } finally {
-    loading.value = false
+    if (!silent) ElMessage.error('获取用户失败')
   }
 }
 
@@ -74,7 +76,7 @@ const removeUser = async (row) => {
   }
 }
 
-useWebSocket(() => fetchUsers())
+useWebSocket(() => fetchUsers(true))
 
 onMounted(fetchUsers)
 </script>
