@@ -43,8 +43,10 @@
           <el-input v-model="form.receiver" placeholder="请输入收件人"></el-input>
         </el-form-item>
 
-        <el-form-item label="驿站名称" prop="station" :rules="[{ required: true, message: '请输入驿站名称', trigger: 'blur' }]">
-          <el-input v-model="form.station" placeholder="请输入驿站名称"></el-input>
+        <el-form-item label="驿站" prop="station" :rules="[{ required: true, message: '请选择驿站', trigger: 'change' }]">
+          <el-select v-model="form.station" placeholder="请选择驿站" style="width: 100%">
+            <el-option v-for="s in stations" :key="s" :label="s" :value="s"></el-option>
+          </el-select>
         </el-form-item>
 
         <el-form-item>
@@ -65,7 +67,8 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 
 const router = useRouter()
 const formRef = ref(null)
@@ -76,6 +79,7 @@ const form = ref({
   receiver: '',
   station: ''
 })
+const stations = ref([])
 const dialogVisible = ref(false)
 const dialogMessage = ref('')
 const dialogType = ref('success') // 'success' 或 'error'
@@ -85,7 +89,15 @@ const goBack = () => {
 }
 
 const token = localStorage.getItem('token')
-const apiBase = (import.meta.env.VITE_API_BASE || '').trim().replace(/^[`'"]+|[`'"]+$/g, '')
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/api/stations')
+    stations.value = data
+  } catch (e) {
+    /* 驿站列表加载失败时仍可手动填写场景由后端校验兜底 */
+  }
+})
 
 const sendPackage = async () => {
   if (!token) {
@@ -98,16 +110,7 @@ const sendPackage = async () => {
   try {
     await formRef.value.validate() // 校验表单
 
-    const response = await fetch(`${apiBase}/api/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(form.value)
-    })
-
-    const result = await response.json()
+    const { data: result } = await axios.post('/api/send', form.value)
 
     if (result.type === 'success') {
       dialogMessage.value = '寄件成功！取件码为: ' + form.value.pickupCode

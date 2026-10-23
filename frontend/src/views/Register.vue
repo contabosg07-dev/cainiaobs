@@ -18,8 +18,8 @@
                 <i class="fas fa-user-circle"></i>
               </div>
               <div class="inputBx password">
-                <input type="password" v-model="password" required />
-                <span>密码</span>
+                <input type="password" v-model="password" minlength="6" required />
+                <span>密码（至少 6 位）</span>
                 <i class="fas fa-key"></i>
                 <div class="inputBx password">
                 <input type="text" v-model="identityCode" required />

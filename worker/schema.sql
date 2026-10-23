@@ -26,3 +26,15 @@ CREATE TABLE IF NOT EXISTS packages (
 CREATE INDEX IF NOT EXISTS idx_packages_receiver ON packages (receiver);
 CREATE INDEX IF NOT EXISTS idx_packages_station  ON packages (station);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_identity ON users (identity_code);
+
+-- 站内通知：到站提醒 / 取件成功提醒
+CREATE TABLE IF NOT EXISTS notifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  username   TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  is_read    INTEGER NOT NULL DEFAULT 0, -- 0 未读 / 1 已读
+  created_at TEXT NOT NULL               -- ISO-8601 UTC
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications (username, is_read);

@@ -3,7 +3,6 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 
 let isRedirecting = false
-let isFetchHandlerReady = false
 
 function isTokenExpiredPayload(data) {
   if (!data) {
@@ -68,12 +67,6 @@ export function setupAuthExpiredHandler(router) {
       return Promise.reject(error)
     }
   )
-
-  setupFetchAuthExpiredHandler(router)
-}
-
-export function isAuthExpiredResponse(response, data) {
-  return [401, 403].includes(response.status) || isTokenExpiredPayload(data)
 }
 
 export async function validateToken() {
@@ -91,45 +84,5 @@ export async function validateToken() {
     return response.data?.type === 'success'
   } catch (error) {
     return false
-  }
-}
-
-function setupFetchAuthExpiredHandler(router) {
-  if (isFetchHandlerReady || typeof window === 'undefined' || !window.fetch) {
-    return
-  }
-
-  isFetchHandlerReady = true
-  const originalFetch = window.fetch.bind(window)
-
-  window.fetch = async (input, init = {}) => {
-    const token = localStorage.getItem('token')
-    const headers = new Headers(init.headers || {})
-    if (token && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
-
-    const response = await originalFetch(input, {
-      ...init,
-      headers
-    })
-
-    let data = null
-    const contentType = response.headers.get('content-type') || ''
-    try {
-      if (contentType.includes('application/json')) {
-        data = await response.clone().json()
-      } else {
-        data = { message: await response.clone().text() }
-      }
-    } catch (error) {
-      data = null
-    }
-
-    if (isAuthExpiredResponse(response, data)) {
-      handleTokenExpired(router)
-    }
-
-    return response
   }
 }

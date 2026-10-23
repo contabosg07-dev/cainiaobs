@@ -58,6 +58,19 @@ function mapUser(r) {
   return { username: r.username, role: r.role, identityCode: r.identity_code }
 }
 
+function mapNotification(r) {
+  return { id: r.id, title: r.title, content: r.content, isRead: r.is_read === 1, createdAt: r.created_at }
+}
+
+// 站内通知：到站提醒 / 取件成功提醒
+async function addNotification(db, username, title, content) {
+  await db.prepare(
+    'INSERT INTO notifications (username, title, content, is_read, created_at) VALUES (?, ?, ?, 0, ?)'
+  )
+    .bind(username, title, content, new Date().toISOString())
+    .run()
+}
+
 async function usernameFromRequest(c) {
   const auth = c.req.header('Authorization')
   if (!auth || !auth.startsWith('Bearer ')) return null
@@ -99,6 +112,12 @@ async function insertPackage(db, body, sender) {
       new Date().toISOString()
     )
     .run()
+  await addNotification(
+    db,
+    body.receiver,
+    '快递到站通知',
+    `您的${body.courier}快递已到「${body.station}」，取件码 ${body.pickupCode}，请及时取件`
+  )
 }
 
 function validatePackageBody(body) {
@@ -129,6 +148,7 @@ app.post('/api/register', async (c) => {
   const password = String(body.password ?? '')
   const identityCode = String(body.identityCode ?? '').trim()
   if (!username || !password || !identityCode) return c.json(fail('注册信息不完整'))
+  if (password.length < 6) return c.json(fail('密码长度至少 6 位'))
 
   const dupUser = await c.env.DB.prepare('SELECT 1 FROM users WHERE username = ?').bind(username).first()
   if (dupUser) return c.json(fail('用户名已存在'))
@@ -151,11 +171,48 @@ app.get('/api/getSfmByToken', async (c) => {
   return c.json(ok('ok', { identityCode: row.identity_code }))
 })
 
+app.post('/api/change-password', async (c) => {
+  const username = await usernameFromRequest(c)
+  if (!username) return c.json(fail('登录已过期，请重新登录'), 401)
+  const { oldPassword, newPassword } = await readJson(c)
+  if (!oldPassword || !newPassword) return c.json(fail('请填写原密码和新密码'))
+  if (String(newPassword).length < 6) return c.json(fail('新密码长度至少 6 位'))
+  const row = await c.env.DB.prepare('SELECT password FROM users WHERE username = ?')
+    .bind(username)
+    .first()
+  if (!row || !(await verifyPassword(String(oldPassword), row.password))) {
+    return c.json(fail('原密码错误'))
+  }
+  await c.env.DB.prepare('UPDATE users SET password = ? WHERE username = ?')
+    .bind(await hashPassword(String(newPassword)), username)
+    .run()
+  return c.json(ok('密码修改成功，下次登录请使用新密码'))
+})
+
+// 公开：驿站名称列表（寄件表单下拉用，不含业务数据）
+app.get('/api/stations', async (c) => {
+  const { results } = await c.env.DB.prepare('SELECT name FROM stations ORDER BY rowid').all()
+  return c.json(results.map((r) => r.name))
+})
+
 // ---------- 包裹业务 ----------
+// 收件包裹列表：身份取自 token，防止枚举他人取件码
 app.get('/api/packages', async (c) => {
-  const username = c.req.query('username')
-  if (!username) return c.json([])
+  const username = await usernameFromRequest(c)
+  if (!username) return c.json(fail('登录已过期，请重新登录'), 401)
   const { results } = await c.env.DB.prepare('SELECT * FROM packages WHERE receiver = ? ORDER BY rowid')
+    .bind(username)
+    .all()
+  return c.json(results.map(mapPackage))
+})
+
+// 我寄出的包裹
+app.get('/api/packages/sent', async (c) => {
+  const username = await usernameFromRequest(c)
+  if (!username) return c.json(fail('登录已过期，请重新登录'), 401)
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM packages WHERE sender = ? ORDER BY rowid DESC'
+  )
     .bind(username)
     .all()
   return c.json(results.map(mapPackage))
@@ -192,7 +249,10 @@ app.post('/api/sendadmin', adminOnly, async (c) => {
 })
 
 app.post('/api/pickup', async (c) => {
-  const { username, id, pickupCode } = await readJson(c)
+  // 身份取自 token：取件码只能由包裹主人本人使用
+  const username = await usernameFromRequest(c)
+  if (!username) return c.json(fail('登录已过期，请重新登录'), 401)
+  const { id, pickupCode } = await readJson(c)
   const pkg = await c.env.DB.prepare('SELECT * FROM packages WHERE id = ?').bind(id).first()
   if (
     pkg &&
@@ -203,9 +263,15 @@ app.post('/api/pickup', async (c) => {
     await c.env.DB.prepare('UPDATE packages SET picked_up = 1 WHERE id = ? AND picked_up = 0')
       .bind(id)
       .run()
+    await addNotification(
+      c.env.DB,
+      username,
+      '取件成功',
+      `您在「${pkg.station}」的${pkg.courier}快递 ${pkg.id} 已完成取件`
+    )
     return c.json(ok('取件成功'))
   }
-  return c.json(fail('已经取走了'))
+  return c.json(fail('取件失败：单号、取件码不匹配或已被取走'))
 })
 
 app.post('/api/scan-pickup', async (c) => {
@@ -225,7 +291,37 @@ app.post('/api/scan-pickup', async (c) => {
   await c.env.DB.prepare('UPDATE packages SET picked_up = 1 WHERE id = ?')
     .bind(packageId)
     .run()
+  await addNotification(
+    c.env.DB,
+    user.username,
+    '取件成功',
+    `您在「${pkg.station}」的${pkg.courier}快递 ${pkg.id} 已扫码出库`
+  )
   return c.json(ok('出库成功'))
+})
+
+// ---------- 站内通知 ----------
+app.get('/api/notifications', async (c) => {
+  const username = await usernameFromRequest(c)
+  if (!username) return c.json(fail('登录已过期，请重新登录'), 401)
+  const [{ results }, unread] = await Promise.all([
+    c.env.DB.prepare('SELECT * FROM notifications WHERE username = ? ORDER BY id DESC LIMIT 50')
+      .bind(username)
+      .all(),
+    c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM notifications WHERE username = ? AND is_read = 0')
+      .bind(username)
+      .first(),
+  ])
+  return c.json({ list: results.map(mapNotification), unreadCount: unread.cnt })
+})
+
+app.post('/api/notifications/read-all', async (c) => {
+  const username = await usernameFromRequest(c)
+  if (!username) return c.json(fail('登录已过期，请重新登录'), 401)
+  await c.env.DB.prepare('UPDATE notifications SET is_read = 1 WHERE username = ?')
+    .bind(username)
+    .run()
+  return c.json(ok('已全部标记为已读'))
 })
 
 // ---------- 管理后台 ----------

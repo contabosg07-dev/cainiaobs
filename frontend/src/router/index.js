@@ -9,6 +9,7 @@ import global from '../views/global.vue';
 import sfm from '../views/sfm.vue';
 import scan from '../views/scan.vue';
 import ExchangePlaza from '../views/cainiao/ExchangePlaza.vue';
+import NotFound from '../views/NotFound.vue';
 import adminlogin from '../views/adminlogin.vue';
 import AdminLayout from '../layout/AdminLayout.vue';
 import Dashboard from '../views/admin/Dashboard.vue';
@@ -30,6 +31,7 @@ const routes = [
   { path: '/scan', name: 'scan', component: scan },
   { path: '/sfm', name: 'sfm', component: sfm },
   { path: '/demo/plaza', name: 'demo-plaza', meta: { title: '闲置交换广场' }, component: ExchangePlaza },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', meta: { title: '页面不存在' }, component: NotFound },
   { path: '/adminlogin', name: 'adminlogin', meta: { title: '管理员登录' }, component: adminlogin },
   // 后台管理
   {
